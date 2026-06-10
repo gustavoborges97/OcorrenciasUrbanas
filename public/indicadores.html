@@ -6,8 +6,6 @@
   <title>Indicadores de Ocorrências — São Paulo</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -253,25 +251,6 @@
 
     @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 
-    .btn-relatorio {
-      background: white;
-      color: var(--verde);
-      border: 1.5px solid rgba(255,255,255,0.6);
-      border-radius: 8px;
-      padding: 6px 16px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: all 0.15s;
-      text-decoration: none;
-    }
-    .btn-relatorio:hover { background: var(--verde-claro); transform: translateY(-1px); }
-    .btn-relatorio:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-
     @media (max-width: 768px) {
       .kpi-grid { grid-template-columns: 1fr; }
       .charts-grid { grid-template-columns: 1fr; }
@@ -298,9 +277,6 @@
     </div>
   </div>
   <div class="header-right">
-    <button class="btn-relatorio" id="btn-relatorio-aberto" onclick="gerarRelatorioEmAberto()">
-      📄 Relatório de Ocorrências Pendentes
-    </button>
     <a href="index.html" class="btn-voltar">← Voltar</a>
   </div>
 </header>
@@ -409,7 +385,7 @@
 </div>
 
 <script>
-  const API_URL = 'http://localhost:3000';
+  const API_URL = 'https://ocorrencias-sp-api.onrender.com';
   const MESES_LABEL = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
   // Cache dos dados brutos vindos da API
@@ -417,9 +393,8 @@
 
   let chartPizza, chartBarra, chartLinha;
 
-  // ─────────────────────────────────────────────────────────
   // BUSCA DADOS DA API
-  // ─────────────────────────────────────────────────────────
+
   async function carregarDados() {
     mostrarLoading(true);
     esconderErro();
@@ -471,9 +446,8 @@
     }
   }
 
-  // ─────────────────────────────────────────────────────────
   // FILTROS
-  // ─────────────────────────────────────────────────────────
+
   function filtrarDados() {
     const mes = parseInt(document.getElementById('filtro-mes').value);
     const ano = parseInt(document.getElementById('filtro-ano').value);
@@ -496,9 +470,8 @@
     renderTudo(dados);
   }
 
-  // ─────────────────────────────────────────────────────────
   // RENDER
-  // ─────────────────────────────────────────────────────────
+ 
   function renderTudo(dados) {
     renderKPIs(dados);
     renderPizza(dados);
@@ -687,9 +660,8 @@
     });
   }
 
-  // ─────────────────────────────────────────────────────────
   // UTILITÁRIOS
-  // ─────────────────────────────────────────────────────────
+
   function mostrarLoading(show) {
     document.getElementById('loading-overlay').classList.toggle('oculto', !show);
   }
@@ -704,159 +676,6 @@
     document.getElementById('erro-banner').classList.remove('show');
   }
 
-
-  // ─────────────────────────────────────────────────────────
-  // RELATÓRIO EM ABERTO — todos os protocolos pendentes
-  // ─────────────────────────────────────────────────────────
-  async function gerarRelatorioEmAberto() {
-    const btn = document.getElementById('btn-relatorio-aberto');
-    btn.disabled = true;
-    btn.innerHTML = '⏳ Gerando...';
-
-    try {
-      const res = await fetch(`${API_URL}/ocorrencias`);
-      if (!res.ok) throw new Error('Erro ao buscar dados');
-      const todas = await res.json();
-
-      // Filtra somente as que têm status pendente (sem filtro de período)
-      const emAberto = todas.filter(o => {
-        const statusAtual = Array.isArray(o.status) && o.status.length > 0
-          ? [...o.status].sort((a,b) => new Date(b.data_alteracao)-new Date(a.data_alteracao))[0].status_novo
-          : 'pendente';
-        return statusAtual === 'pendente';
-      });
-
-      if (emAberto.length === 0) {
-        alert('Nenhuma ocorrência em aberto encontrada!');
-        return;
-      }
-
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-
-      // ── Cabeçalho laranja (em aberto) ──
-      doc.setFillColor(230, 126, 34);
-      doc.rect(0, 0, 297, 22, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(13);
-      doc.text('Ocorrências Em Aberto — São Paulo', 14, 9);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      const agora = new Date();
-      doc.text(`Todos os períodos   |   Gerado em: ${agora.toLocaleDateString('pt-BR')} às ${agora.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})}   |   Total em aberto: ${emAberto.length}`, 14, 17);
-
-      // ── KPI total ──
-      doc.setFillColor(255, 248, 225);
-      doc.roundedRect(14, 26, 82, 14, 2, 2, 'F');
-      doc.setFontSize(16);
-      doc.setTextColor(230, 126, 34);
-      doc.setFont('helvetica', 'bold');
-      doc.text(String(emAberto.length), 55, 35, { align: 'center' });
-      doc.setFontSize(8);
-      doc.setTextColor(107, 107, 107);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Total em Aberto', 55, 37, { align: 'center' });
-
-      // Contagem por categoria
-      const porCategoria = {};
-      emAberto.forEach(o => {
-        const cat = o.categoria?.tipo || 'Outros';
-        porCategoria[cat] = (porCategoria[cat] || 0) + 1;
-      });
-      let xCat = 102;
-      Object.entries(porCategoria).slice(0, 4).forEach(([cat, qtd]) => {
-        doc.setFillColor(245, 245, 245);
-        doc.roundedRect(xCat, 26, 44, 14, 2, 2, 'F');
-        doc.setFontSize(14);
-        doc.setTextColor(26, 122, 74);
-        doc.setFont('helvetica', 'bold');
-        doc.text(String(qtd), xCat + 22, 35, { align: 'center' });
-        doc.setFontSize(7);
-        doc.setTextColor(107, 107, 107);
-        doc.setFont('helvetica', 'normal');
-        doc.text(cat.length > 14 ? cat.slice(0,13)+'.' : cat, xCat + 22, 37, { align: 'center' });
-        xCat += 46;
-      });
-
-      // ── Tabela ──
-      const linhas = emAberto.map(o => {
-        const d = new Date(o.data_inclusao);
-        const diasAberto = Math.floor((agora - d) / (1000*60*60*24));
-        return [
-          o.protocolo || '—',
-          o.local?.endereco || '—',
-          o.local?.zona || '—',
-          o.categoria?.tipo || '—',
-          o.categoria?.classificacao || 'normal',
-          d.toLocaleDateString('pt-BR'),
-          diasAberto + (diasAberto === 1 ? ' dia' : ' dias'),
-        ];
-      });
-
-      // Ordena por mais antigos primeiro
-      linhas.sort((a, b) => {
-        const dA = a[5].split('/').reverse().join('-');
-        const dB = b[5].split('/').reverse().join('-');
-        return new Date(dA) - new Date(dB);
-      });
-
-      doc.autoTable({
-        startY: 44,
-        head: [['Protocolo', 'Endereço', 'Região', 'Categoria', 'Classificação', 'Registrado em', 'Tempo Aberto']],
-        body: linhas,
-        styles: { font: 'helvetica', fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
-        headStyles: { fillColor: [230, 126, 34], textColor: 255, fontStyle: 'bold', fontSize: 8 },
-        alternateRowStyles: { fillColor: [255, 252, 245] },
-        columnStyles: {
-          0: { cellWidth: 42, fontStyle: 'bold', textColor: [230, 126, 34] },
-          1: { cellWidth: 65 },
-          2: { cellWidth: 24, halign: 'center' },
-          3: { cellWidth: 40 },
-          4: { cellWidth: 28, halign: 'center' },
-          5: { cellWidth: 28, halign: 'center' },
-          6: { cellWidth: 26, halign: 'center', fontStyle: 'bold' },
-        },
-        didDrawCell: (data) => {
-          if (data.section === 'body' && data.column.index === 6) {
-            const dias = parseInt(data.cell.raw);
-            let cor = [26, 122, 74];
-            if (dias > 30) cor = [192, 57, 43];
-            else if (dias > 7) cor = [230, 126, 34];
-            doc.setTextColor(...cor);
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(8);
-            doc.text(data.cell.raw, data.cell.x + data.cell.width/2, data.cell.y + data.cell.height/2 + 1, { align: 'center' });
-            doc.setTextColor(28, 28, 30);
-            doc.setFont('helvetica', 'normal');
-          }
-        },
-        margin: { left: 14, right: 14 },
-      });
-
-      // ── Rodapé ──
-      const totalPaginas = doc.internal.getNumberOfPages();
-      for (let i = 1; i <= totalPaginas; i++) {
-        doc.setPage(i);
-        doc.setFontSize(8);
-        doc.setTextColor(160, 160, 160);
-        doc.text(`Página ${i} de ${totalPaginas}  —  Ocorrências Urbanas SP`, 297/2, 205, { align: 'center' });
-      }
-
-      const nomeArquivo = `ocorrencias-em-aberto-${agora.toLocaleDateString('pt-BR').replace(/\//g,'-')}.pdf`;
-      doc.save(nomeArquivo);
-
-    } catch (err) {
-      alert('Erro ao gerar relatório: ' + err.message);
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = '🔴 Relatório Em Aberto';
-    }
-  }
-
-  // ─────────────────────────────────────────────────────────
-  // INIT
-  // ─────────────────────────────────────────────────────────
   window.addEventListener('DOMContentLoaded', () => {
     const agora = new Date();
     document.getElementById('filtro-ano').value = agora.getFullYear();
