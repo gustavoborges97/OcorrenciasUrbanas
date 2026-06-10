@@ -1051,7 +1051,7 @@
       }
     };
 
-    const API_URL = 'https://ocorrencias-sp-api.onrender.com';
+    const API_URL = '';
 
     try {
       // 1. Envia os dados da ocorrência
@@ -1180,7 +1180,7 @@
     document.getElementById('resultado-consulta').style.display = 'none';
 
     try {
-      const API_URL = 'https://ocorrencias-sp-api.onrender.com';
+      const API_URL = '';
       const res = await fetch(`${API_URL}/ocorrencias/${encodeURIComponent(protocolo)}`);
 
       if (!res.ok) {
