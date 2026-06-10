@@ -4,11 +4,9 @@ const cors    = require('cors');
 require('dotenv').config();
 
 const app = express();
-app.use(cors([
-    'https://gustavoborges97.github.io/OcorrenciasUrbanas/',
-    'http://localhost:3000'
-]));
+app.use(cors());
 app.use(express.json());
+
 app.use(express.static(path.join(__dirname, '..')));
 
 app.use('/ocorrencias', require('./routes/ocorrencias'));
