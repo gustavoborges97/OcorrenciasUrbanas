@@ -9,7 +9,7 @@ app.use(cors([
     'http://localhost:3000'
 ]));
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.static(path.join(__dirname, '..')));
 
 app.use('/ocorrencias', require('./routes/ocorrencias'));
 app.use('/fotos',       require('./routes/fotos'));
