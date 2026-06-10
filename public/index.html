@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ocorrências Urbanas — São Paulo</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- Leaflet CSS (OpenStreetMap) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --verde: #1a7a4a;
+      --verde-claro: #e8f5ee;
+      --verde-medio: #2d9e63;
+      --cinza-escuro: #1c1c1e;
+      --cinza: #6b6b6b;
+      --cinza-claro: #f5f5f5;
+      --borda: #e0e0e0;
+      --branco: #ffffff;
+      --erro: #d32f2f;
+      --sucesso: #1a7a4a;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--cinza-claro);
+      color: var(--cinza-escuro);
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--verde);
+      color: white;
+      padding: 0 2rem;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 12px; }
+
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+
+    .header-title { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
+    .header-sub { font-size: 11px; opacity: 0.7; margin-top: 1px; }
+    .header-badge {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 99px;
+      padding: 4px 12px;
+      font-size: 12px;
+    }
+
+    .container {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    .page-header {
+      margin-bottom: 2rem;
+      animation: fadeUp 0.5s ease both;
+    }
+
+    .page-header h1 {
+      font-size: 26px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      color: var(--cinza-escuro);
+      margin-bottom: 6px;
+    }
+
+    .page-header p {
+      font-size: 14px;
+      color: var(--cinza);
+      line-height: 1.6;
+    }
+
+    .steps {
+      display: flex;
+      gap: 0;
+      margin-bottom: 2rem;
+      background: var(--branco);
+      border: 1px solid var(--borda);
+      border-radius: 12px;
+      overflow: hidden;
+      animation: fadeUp 0.5s ease 0.1s both;
+    }
+
+    .step {
+      flex: 1;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-right: 1px solid var(--borda);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .step:last-child { border-right: none; }
+    .step.active { background: var(--verde-claro); }
+    .step.done { background: #f0faf4; }
+
+    .step-num {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: var(--borda);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 600;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+
+    .step.active .step-num { background: var(--verde); color: white; }
+    .step.done .step-num { background: var(--verde-medio); color: white; }
+    .step.done .step-num::after { content: '✓'; }
+    .step.done .step-num span { display: none; }
+
+    .step-info { min-width: 0; }
+    .step-label { font-size: 12px; font-weight: 500; color: var(--cinza-escuro); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .step-desc { font-size: 11px; color: var(--cinza); }
+    .step.active .step-label { color: var(--verde); }
+
+    .card {
+      background: var(--branco);
+      border: 1px solid var(--borda);
+      border-radius: 16px;
+      padding: 1.75rem;
+      margin-bottom: 1rem;
+      animation: fadeUp 0.5s ease 0.2s both;
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--cinza-escuro);
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-title-icon {
+      width: 28px; height: 28px;
+      background: var(--verde-claro);
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+
+    .form-grid { display: grid; gap: 16px; }
+    .form-grid-2 { grid-template-columns: 1fr 1fr; }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+
+    label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--cinza);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input, select, textarea {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      padding: 10px 14px;
+      border: 1.5px solid var(--borda);
+      border-radius: 8px;
+      background: var(--branco);
+      color: var(--cinza-escuro);
+      transition: border-color 0.15s, box-shadow 0.15s;
+      outline: none;
+      width: 100%;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--verde-medio);
+      box-shadow: 0 0 0 3px rgba(45,158,99,0.1);
+    }
+
+    textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
+
+    .erro-msg {
+      font-size: 11px;
+      color: var(--erro);
+      display: none;
+    }
+
+    .field.invalido .erro-msg { display: block; }
+    .field.invalido input, .field.invalido select, .field.invalido textarea {
+      border-color: var(--erro);
+    }
+
+    .foto-area {
+      border: 2px dashed var(--borda);
+      border-radius: 10px;
+      padding: 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--cinza-claro);
+    }
+
+    .foto-area:hover { border-color: var(--verde-medio); background: var(--verde-claro); }
+    .foto-area p { font-size: 13px; color: var(--cinza); margin-top: 6px; }
+    .foto-area strong { font-size: 14px; color: var(--cinza-escuro); }
+    #foto-input { display: none; }
+
+    .fotos-preview {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;
+    }
+
+    .foto-thumb {
+      width: 72px; height: 72px;
+      border-radius: 8px;
+      object-fit: cover;
+      border: 1px solid var(--borda);
+    }
+
+    /* ── MAPA ── */
+    .mapa-container {
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1.5px solid var(--borda);
+      position: relative;
+    }
+
+    #mapa {
+      height: 260px;
+      width: 100%;
+      z-index: 0;
+    }
+
+    .mapa-btn-gps {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 999;
+      background: var(--verde);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      transition: background 0.15s;
+    }
+
+    .mapa-btn-gps:hover { background: #155c38; }
+    .mapa-btn-gps:disabled { background: var(--cinza); cursor: not-allowed; }
+
+    .mapa-dica {
+      font-size: 11px;
+      color: var(--cinza);
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .coords {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .coords input {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      background: var(--cinza-claro);
+    }
+
+    /* Endereço detectado */
+    .endereco-detectado {
+      display: none;
+      background: var(--verde-claro);
+      border: 1px solid #b2dfcb;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--verde);
+      margin-top: 8px;
+      align-items: center;
+      gap: 8px;
+    }
+    .endereco-detectado.show { display: flex; }
+
+    .btn-group { display: flex; gap: 10px; margin-top: 1.5rem; }
+
+    .btn {
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+    }
+
+    .btn-primary {
+      background: var(--verde);
+      color: white;
+      flex: 1;
+    }
+
+    .btn-primary:hover { background: #155c38; transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { background: var(--cinza); cursor: not-allowed; transform: none; }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--cinza);
+      border: 1.5px solid var(--borda);
+    }
+
+    .btn-secondary:hover { background: var(--cinza-claro); }
+
+    /* TELA DE SUCESSO */
+    #tela-sucesso {
+      display: none;
+      text-align: center;
+      padding: 3rem 1.5rem;
+      animation: fadeUp 0.5s ease both;
+    }
+
+    .sucesso-icon {
+      width: 72px; height: 72px;
+      background: var(--verde-claro);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px;
+      margin: 0 auto 1.5rem;
+    }
+
+    #tela-sucesso h2 { font-size: 22px; font-weight: 600; margin-bottom: 8px; }
+    #tela-sucesso p { font-size: 14px; color: var(--cinza); margin-bottom: 1.5rem; }
+
+    .protocolo-box {
+      background: var(--verde-claro);
+      border: 1px solid #b2dfcb;
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      margin: 1rem auto;
+      max-width: 400px;
+    }
+
+    .protocolo-label { font-size: 11px; color: var(--verde); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .protocolo-num { font-family: 'DM Mono', monospace; font-size: 18px; font-weight: 500; color: var(--verde); letter-spacing: 2px; }
+
+    .loading { display: none; }
+    .loading.show { display: inline-block; }
+
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+    .alerta {
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 1rem;
+      display: none;
+    }
+
+    .alerta.erro { background: #fdecea; color: var(--erro); border: 1px solid #f5c6c6; display: block; }
+    .alerta.sucesso { background: var(--verde-claro); color: var(--verde); border: 1px solid #b2dfcb; display: block; }
+
+    @media (max-width: 480px) {
+      .form-grid-2 { grid-template-columns: 1fr; }
+      .steps { overflow-x: auto; }
+      .step { min-width: 120px; }
+    }
+
+    /* ── TELA CONSULTA PROTOCOLO ── */
+    #tela-consulta { display: none; animation: fadeUp 0.5s ease both; }
+
+    .consulta-header { margin-bottom: 1.5rem; }
+    .consulta-header h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 6px; }
+    .consulta-header p  { font-size: 14px; color: var(--cinza); }
+
+    .busca-box { display: flex; gap: 10px; margin-bottom: 1.5rem; }
+    .busca-box input { font-family: 'DM Mono', monospace; font-size: 13px; letter-spacing: 1px; flex: 1; }
+    .busca-box input::placeholder { font-family: 'DM Sans', sans-serif; letter-spacing: 0; }
+
+    .btn-buscar {
+      background: var(--verde); color: white; border: none; border-radius: 10px;
+      padding: 10px 20px; font-family: 'DM Sans', sans-serif; font-size: 14px;
+      font-weight: 500; cursor: pointer; white-space: nowrap;
+      transition: background 0.15s; display: flex; align-items: center; gap: 6px;
+    }
+    .btn-buscar:hover { background: #155c38; }
+    .btn-buscar:disabled { background: var(--cinza); cursor: not-allowed; }
+
+    #resultado-consulta { display: none; }
+
+    .resultado-card {
+      background: var(--branco); border: 1px solid var(--borda);
+      border-radius: 16px; overflow: hidden; margin-bottom: 1rem;
+    }
+    .resultado-top {
+      padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--borda);
+      display: flex; justify-content: space-between;
+      align-items: flex-start; gap: 12px; flex-wrap: wrap;
+    }
+    .resultado-protocolo-label { font-size: 11px; color: var(--cinza); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .resultado-protocolo-val { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--verde); font-weight: 500; letter-spacing: 1px; word-break: break-all; }
+
+    .badge-status { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 99px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+    .badge-status.pendente     { background: #fff8e1; color: #f57f17; border: 1px solid #ffe082; }
+    .badge-status.em_andamento { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
+    .badge-status.resolvido    { background: var(--verde-claro); color: var(--verde); border: 1px solid #b2dfcb; }
+    .badge-status.cancelado    { background: #fdecea; color: var(--erro); border: 1px solid #f5c6c6; }
+
+    .resultado-info { padding: 1.25rem 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; }
+    .info-item { display: flex; flex-direction: column; gap: 3px; }
+    .info-label { font-size: 11px; color: var(--cinza); text-transform: uppercase; letter-spacing: 0.5px; }
+    .info-val   { font-size: 13px; color: var(--cinza-escuro); font-weight: 500; }
+
+    .timeline-card { background: var(--branco); border: 1px solid var(--borda); border-radius: 16px; padding: 1.25rem 1.5rem; }
+    .timeline-title { font-size: 13px; font-weight: 600; color: var(--cinza-escuro); margin-bottom: 1.25rem; display: flex; align-items: center; gap: 8px; }
+    .timeline { position: relative; padding-left: 28px; }
+    .timeline::before { content: ''; position: absolute; left: 7px; top: 8px; bottom: 8px; width: 2px; background: var(--borda); border-radius: 2px; }
+    .timeline-item { position: relative; margin-bottom: 1.25rem; }
+    .timeline-item:last-child { margin-bottom: 0; }
+    .timeline-dot { position: absolute; left: -24px; top: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--borda); border: 2px solid var(--branco); box-shadow: 0 0 0 2px var(--borda); }
+    .timeline-item.pendente     .timeline-dot { background: #f9a825; box-shadow: 0 0 0 2px #ffe082; }
+    .timeline-item.em_andamento .timeline-dot { background: #1976d2; box-shadow: 0 0 0 2px #90caf9; }
+    .timeline-item.resolvido    .timeline-dot { background: var(--verde); box-shadow: 0 0 0 2px #b2dfcb; }
+    .timeline-item.cancelado    .timeline-dot { background: var(--erro); box-shadow: 0 0 0 2px #f5c6c6; }
+    .timeline-status { font-size: 13px; font-weight: 500; color: var(--cinza-escuro); margin-bottom: 2px; }
+    .timeline-data   { font-size: 11px; color: var(--cinza); }
+
+    .nao-encontrado { display: none; background: #fdecea; border: 1px solid #f5c6c6; border-radius: 10px; padding: 1rem 1.25rem; font-size: 13px; color: var(--erro); margin-bottom: 1rem; }
+
+    .spinner-busca { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; display: none; }
+    .btn-buscar.carregando .spinner-busca { display: inline-block; }
+    .btn-buscar.carregando .icone-busca   { display: none; }
+
+    .tab-nav { display: flex; gap: 4px; background: rgba(255,255,255,0.12); border-radius: 8px; padding: 3px; }
+    .tab-btn { padding: 5px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; border: none; background: transparent; color: rgba(255,255,255,0.8); font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
+    .tab-btn.ativo { background: white; color: var(--verde); }
+    .tab-btn:hover:not(.ativo) { color: white; background: rgba(255,255,255,0.15); }
+
+    @media (max-width: 480px) {
+      .resultado-info { grid-template-columns: 1fr; }
+      .resultado-top  { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="logo-icon">🏙️</div>
+    <div>
+      <div class="header-title">Ocorrências Urbanas</div>
+      <div class="header-sub">Cidade de São Paulo - Portal do Cidadão</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div class="tab-nav">
+      <button class="tab-btn ativo" id="tab-registrar" onclick="trocarTela('form')">✏️ Registrar</button>
+      <button class="tab-btn" id="tab-consultar" onclick="trocarTela('consulta')">🔍 Consultar</button>
+    </div>
+    <div class="header-badge" onclick="window.location.href='indicadores.html'" style="cursor:pointer">📊 Indicadores</div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- FORMULÁRIO -->
+  <div id="tela-form">
+    <div class="page-header">
+      <h1>Registrar ocorrência</h1>
+      <p>Informe os dados da ocorrência urbana. Você receberá um protocolo de confirmação ao finalizar.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step active" id="step-1">
+        <div class="step-num"><span>1</span></div>
+        <div class="step-info">
+          <div class="step-label">Identificação</div>
+          <div class="step-desc">Seus dados</div>
+        </div>
+      </div>
+      <div class="step" id="step-2">
+        <div class="step-num"><span>2</span></div>
+        <div class="step-info">
+          <div class="step-label">Ocorrência</div>
+          <div class="step-desc">Tipo e descrição</div>
+        </div>
+      </div>
+      <div class="step" id="step-3">
+        <div class="step-num"><span>3</span></div>
+        <div class="step-info">
+          <div class="step-label">Localização</div>
+          <div class="step-desc">Endereço e mapa</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="alerta" class="alerta"></div>
+
+    <form id="form-ocorrencia" novalidate>
+
+      <!-- SEÇÃO 1: DADOS DO CIDADÃO -->
+      <div class="card">
+        <div class="card-title">
+          <div class="card-title-icon">👤</div>
+          Dados do cidadão
+        </div>
+        <div class="form-grid">
+          <div class="form-grid form-grid-2">
+            <div class="field" id="field-nome">
+              <label for="nome">Nome completo *</label>
+              <input type="text" id="nome" placeholder="Ex: João da Silva" />
+              <span class="erro-msg">Nome é obrigatório</span>
+            </div>
+            <div class="field" id="field-telefone">
+              <label for="telefone">Telefone *</label>
+              <input type="tel" id="telefone" placeholder="(11) 99999-9999" maxlength="15" />
+              <span class="erro-msg">Telefone é obrigatório</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEÇÃO 2: OCORRÊNCIA -->
+      <div class="card">
+        <div class="card-title">
+          <div class="card-title-icon">⚠️</div>
+          Dados da ocorrência
+        </div>
+        <div class="form-grid">
+          <div class="form-grid form-grid-2">
+            <div class="field" id="field-categoria">
+              <label for="categoria">Categoria *</label>
+              <select id="categoria">
+                <option value="">Selecione...</option>
+                <option value="1">Buraco na via</option>
+                <option value="2">Iluminação pública</option>
+                <option value="3">Lixo irregular</option>
+                <option value="6">Vandalismo</option>
+                <option value="7">Outros</option>
+              </select>
+              <span class="erro-msg">Selecione uma categoria</span>
+            </div>
+            <div class="field">
+              <label for="classificacao">Classificação</label>
+              <select id="classificacao">
+                <option value="urgente">Urgente</option>
+                <option value="normal" selected>Normal</option>
+                <option value="baixa">Baixa prioridade</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field" id="field-descricao">
+            <label for="descricao">Descrição detalhada *</label>
+            <textarea id="descricao" placeholder="Descreva a ocorrência com o máximo de detalhes possível..."></textarea>
+            <span class="erro-msg">Descrição é obrigatória</span>
+          </div>
+
+          <div class="field">
+            <label>Fotos (opcional)</label>
+            <div class="foto-area" onclick="document.getElementById('foto-input').click()">
+              <div style="font-size:24px">📷</div>
+              <strong>Clique para adicionar fotos</strong>
+              <p>JPG, PNG — máximo 5MB cada</p>
+            </div>
+            <input type="file" id="foto-input" accept="image/*" multiple onchange="previewFotos(this)">
+            <div class="fotos-preview" id="fotos-preview"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEÇÃO 3: LOCALIZAÇÃO -->
+      <div class="card">
+        <div class="card-title">
+          <div class="card-title-icon">📍</div>
+          Localização
+        </div>
+        <div class="form-grid">
+          <div class="form-grid form-grid-2">
+            <div class="field" id="field-cep">
+              <label for="cep">CEP *</label>
+              <input type="text" id="cep" placeholder="00000-000" maxlength="9" oninput="formatarCEP(this)" onblur="buscarCEP(this.value)" />
+              <span class="erro-msg">CEP inválido</span>
+            </div>
+            <div class="field">
+              <label for="bairro">Bairro</label>
+              <input type="text" id="bairro" placeholder="Preenchido automaticamente" />
+            </div>
+          </div>
+
+          <div class="field" id="field-endereco">
+            <label for="endereco">Endereço *</label>
+            <input type="text" id="endereco" placeholder="Rua, número, complemento" />
+            <span class="erro-msg">Endereço é obrigatório</span>
+          </div>
+
+          <div class="field">
+            <label for="zona">Zona</label>
+            <select id="zona">
+              <option value="">Selecione...</option>
+              <option>Norte</option>
+              <option>Sul</option>
+              <option>Leste</option>
+              <option>Oeste</option>
+              <option>Centro</option>
+            </select>
+          </div>
+
+          <!-- MAPA LEAFLET -->
+          <div class="field">
+            <label>Localização no mapa</label>
+            <div class="mapa-container">
+              <div id="mapa"></div>
+              <button type="button" class="mapa-btn-gps" id="btn-gps" onclick="obterLocalizacaoGPS()">
+                📍 Usar minha localização
+              </button>
+            </div>
+            <p class="mapa-dica">💡 Clique no mapa para marcar o local da ocorrência, ou use o botão de GPS</p>
+
+            <!-- Endereço detectado automaticamente -->
+            <div class="endereco-detectado" id="endereco-detectado">
+              <span>📍</span>
+              <span id="endereco-detectado-texto"></span>
+            </div>
+
+            <div class="coords">
+              <input type="text" id="latitude" placeholder="Latitude" readonly />
+              <input type="text" id="longitude" placeholder="Longitude" readonly />
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="btn-group">
+        <button type="button" class="btn btn-secondary" onclick="limparForm()">Limpar</button>
+        <button type="submit" class="btn btn-primary" id="btn-enviar">
+          <span class="loading" id="spinner"><span class="spinner"></span></span>
+          Enviar ocorrência
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- TELA CONSULTA PROTOCOLO -->
+  <div id="tela-consulta">
+    <div class="consulta-header">
+      <h1>Consultar ocorrência</h1>
+      <p>Digite o número do protocolo recebido ao registrar sua ocorrência.</p>
+    </div>
+
+    <div class="busca-box">
+      <input type="text" id="input-protocolo" placeholder="Cole o protocolo aqui (ex: a3f1c2d4-...)"
+        onkeydown="if(event.key==='Enter') buscarProtocolo()" />
+      <button class="btn-buscar" id="btn-buscar" onclick="buscarProtocolo()">
+        <span class="spinner-busca"></span>
+        <span class="icone-busca">🔍</span>
+        Buscar
+      </button>
+    </div>
+
+    <div class="nao-encontrado" id="nao-encontrado">
+      ❌ Protocolo não encontrado. Verifique o número e tente novamente.
+    </div>
+
+    <div id="resultado-consulta">
+      <!-- Card principal -->
+      <div class="resultado-card">
+        <div class="resultado-top">
+          <div>
+            <div class="resultado-protocolo-label">Protocolo</div>
+            <div class="resultado-protocolo-val" id="res-protocolo">—</div>
+          </div>
+          <span class="badge-status" id="res-badge">—</span>
+        </div>
+        <div class="resultado-info">
+          <div class="info-item">
+            <span class="info-label">Categoria</span>
+            <span class="info-val" id="res-categoria">—</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Data de registro</span>
+            <span class="info-val" id="res-data">—</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Endereço</span>
+            <span class="info-val" id="res-endereco">—</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Bairro / Zona</span>
+            <span class="info-val" id="res-bairro">—</span>
+          </div>
+          <div class="info-item" style="grid-column:1/-1">
+            <span class="info-label">Descrição</span>
+            <span class="info-val" id="res-descricao" style="font-weight:400;line-height:1.5">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Linha do tempo -->
+      <div class="timeline-card">
+        <div class="timeline-title">
+          <div class="card-title-icon">🕐</div>
+          Histórico de status
+        </div>
+        <div class="timeline" id="res-timeline"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TELA DE SUCESSO -->
+  <div id="tela-sucesso">
+    <div class="sucesso-icon">✅</div>
+    <h2>Ocorrência registrada!</h2>
+    <p>Sua ocorrência foi recebida<br>Guarde o protocolo abaixo para acompanhar o status.</p>
+    <div class="protocolo-box">
+      <div class="protocolo-label">Número do protocolo</div>
+      <div class="protocolo-num" id="protocolo-num">—</div>
+    </div>
+    <p style="margin-top:1rem; font-size:13px; color:#6b6b6b">Você pode acompanhar o andamento pelo número do protocolo no portal do cidadão</p>
+    <div class="btn-group" style="justify-content:center; margin-top:1.5rem">
+      <button class="btn btn-secondary" onclick="novaOcorrencia()">Registrar nova ocorrência</button>
+      <button class="btn btn-primary" style="flex:none" onclick="consultarEsteProtocolo()">🔍 Ver status</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+<script>
+  // MAPA — Leaflet + OpenStreetMap
+  const mapaInicial = [-23.5505, -46.6333]; // São Paulo
+  const mapa = L.map('mapa').setView(mapaInicial, 13);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19
+  }).addTo(mapa);
+
+  // Ícone personalizado verde
+  const iconeVerde = L.divIcon({
+    className: '',
+    html: `<div style="
+      width:32px;height:32px;
+      background:var(--verde);
+      border:3px solid white;
+      border-radius:50% 50% 50% 0;
+      transform:rotate(-45deg);
+      box-shadow:0 2px 8px rgba(0,0,0,0.3);
+    "></div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+  });
+
+  let marcador = null;
+
+  // Clique no mapa e coloca marcador e busca endereço
+  mapa.on('click', async (e) => {
+    const { lat, lng } = e.latlng;
+    colocarMarcador(lat, lng);
+    await geocodificacaoReversa(lat, lng);
+  });
+
+  function colocarMarcador(lat, lng) {
+    if (marcador) mapa.removeLayer(marcador);
+    marcador = L.marker([lat, lng], { icon: iconeVerde, draggable: true }).addTo(mapa);
+
+    // Arrasto do marcador também atualiza endereço
+    marcador.on('dragend', async (e) => {
+      const pos = e.target.getLatLng();
+      atualizarCoordenadas(pos.lat, pos.lng);
+      await geocodificacaoReversa(pos.lat, pos.lng);
+    });
+
+    atualizarCoordenadas(lat, lng);
+    mapa.setView([lat, lng], 16);
+  }
+
+  function atualizarCoordenadas(lat, lng) {
+    document.getElementById('latitude').value = lat.toFixed(6);
+    document.getElementById('longitude').value = lng.toFixed(6);
+  }
+
+  async function geocodificacaoReversa(lat, lng) {
+    try {
+      const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=pt-BR`;
+      const res = await fetch(url, {
+        headers: { 'Accept-Language': 'pt-BR' }
+      });
+      const data = await res.json();
+
+      if (data && data.address) {
+        const end = data.address;
+
+        // Preenche os campos automaticamente
+        const rua = end.road || end.pedestrian || end.path || '';
+        const numero = end.house_number || '';
+        const bairro = end.suburb || end.neighbourhood || end.quarter || '';
+        const cep = (end.postcode || '').replace('-', '');
+
+        if (rua) {
+          document.getElementById('endereco').value = numero ? `${rua}, ${numero}` : rua;
+          document.getElementById('field-endereco').classList.remove('invalido');
+        }
+
+        if (bairro) document.getElementById('bairro').value = bairro;
+
+        if (cep.length === 8) {
+          document.getElementById('cep').value = cep.slice(0,5) + '-' + cep.slice(5);
+          document.getElementById('field-cep').classList.remove('invalido');
+        }
+
+        // Detecta zona de SP automaticamente
+        detectarZona(end);
+
+        // Mostra o endereço completo detectado
+        const enderecoCompleto = [rua, numero, bairro, end.city || end.town || '']
+          .filter(Boolean).join(', ');
+
+        mostrarEnderecoDetectado(enderecoCompleto);
+      }
+    } catch (err) {
+      console.error('Erro na geocodificação reversa:', err);
+    }
+  }
+
+  function mostrarEnderecoDetectado(texto) {
+    const el = document.getElementById('endereco-detectado');
+    document.getElementById('endereco-detectado-texto').textContent = texto;
+    el.classList.add('show');
+  }
+
+  function detectarZona(address) {
+    const bairro = (address.suburb || address.neighbourhood || '').toLowerCase();
+    const zonas = {
+      norte: ['santana', 'tucuruvi', 'jaçanã', 'tremembé', 'mandaqui', 'limão', 'casa verde'],
+      sul: ['santo amaro', 'jabaquara', 'campo limpo', 'moema', 'saúde', 'ipiranga', 'vila mariana'],
+      leste: ['penha', 'tatuapé', 'itaquera', 'são miguel', 'ermelino', 'vila matilde'],
+      oeste: ['lapa', 'pinheiros', 'perdizes', 'vila madalena', 'butantã', 'jaguaré'],
+      centro: ['sé', 'república', 'liberdade', 'bela vista', 'consolação', 'higienópolis'],
+    };
+
+    const select = document.getElementById('zona');
+    for (const [zona, bairros] of Object.entries(zonas)) {
+      if (bairros.some(b => bairro.includes(b))) {
+        const opt = [...select.options].find(o => o.text.toLowerCase() === zona);
+        if (opt) select.value = opt.value;
+        return;
+      }
+    }
+  }
+
+  // GPS — pegar localização atual
+
+  function obterLocalizacaoGPS() {
+    if (!navigator.geolocation) {
+      mostrarAlerta('Seu navegador não suporta geolocalização.', 'erro');
+      return;
+    }
+
+    const btn = document.getElementById('btn-gps');
+    btn.disabled = true;
+    btn.textContent = '⏳ Obtendo localização...';
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        colocarMarcador(lat, lng);
+        await geocodificacaoReversa(lat, lng);
+        btn.disabled = false;
+        btn.textContent = '✓ Localização obtida';
+        setTimeout(() => { btn.textContent = '📍 Usar minha localização'; }, 3000);
+      },
+      (err) => {
+        btn.disabled = false;
+        btn.textContent = '📍 Usar minha localização';
+        const msgs = {
+          1: 'Permissão de localização negada.',
+          2: 'Localização indisponível.',
+          3: 'Tempo esgotado ao obter localização.',
+        };
+        mostrarAlerta(msgs[err.code] || 'Erro ao obter localização.', 'erro');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  }
+
+  // CEP
+  function formatarCEP(input) {
+    let v = input.value.replace(/\D/g, '');
+    if (v.length > 5) v = v.slice(0, 5) + '-' + v.slice(5, 8);
+    input.value = v;
+  }
+
+  async function buscarCEP(cep) {
+    const c = cep.replace(/\D/g, '');
+    if (c.length !== 8) return;
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${c}/json/`);
+      const d = await r.json();
+      if (!d.erro) {
+        document.getElementById('bairro').value = d.bairro || '';
+        if (!document.getElementById('endereco').value)
+          document.getElementById('endereco').value = d.logradouro || '';
+
+        // Centraliza mapa na cidade/estado se tiver coordenadas
+        // (ViaCEP não retorna lat/lng, mas pod buscar no Nominatim)
+        buscarCoordenadasPorCEP(c);
+      } else {
+        document.getElementById('field-cep').classList.add('invalido');
+      }
+    } catch (e) {}
+  }
+
+  async function buscarCoordenadasPorCEP(cep) {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${cep}&country=BR&format=json&limit=1&accept-language=pt-BR`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lng = parseFloat(data[0].lon);
+        mapa.setView([lat, lng], 16);
+        // Não coloca marcador automaticamente pelo CEP 
+      }
+    } catch (e) {}
+  }
+
+  // ─────────────────────────────────────────────
+  // FOTOS
+  // ─────────────────────────────────────────────
+  function previewFotos(input) {
+    const preview = document.getElementById('fotos-preview');
+    preview.innerHTML = '';
+    Array.from(input.files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        img.className = 'foto-thumb';
+        preview.appendChild(img);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // VALIDAÇÃO
+
+  function validar() {
+    let ok = true;
+    const campos = [
+      { id: 'nome', fieldId: 'field-nome' },
+      { id: 'telefone', fieldId: 'field-telefone' },
+      { id: 'categoria', fieldId: 'field-categoria' },
+      { id: 'descricao', fieldId: 'field-descricao' },
+      { id: 'cep', fieldId: 'field-cep' },
+      { id: 'endereco', fieldId: 'field-endereco' },
+    ];
+    campos.forEach(({ id, fieldId }) => {
+      const el = document.getElementById(id);
+      const field = document.getElementById(fieldId);
+      if (!el.value.trim()) {
+        field.classList.add('invalido');
+        ok = false;
+      } else {
+        field.classList.remove('invalido');
+      }
+    });
+    return ok;
+  }
+
+  function mostrarAlerta(msg, tipo) {
+    const el = document.getElementById('alerta');
+    el.textContent = msg;
+    el.className = 'alerta ' + tipo;
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    setTimeout(() => el.className = 'alerta', 5000);
+  }
+
+  
+  // ENVIO — substitua a URL pela API Supabase
+  document.getElementById('form-ocorrencia').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!validar()) {
+      mostrarAlerta('Preencha todos os campos obrigatórios.', 'erro');
+      return;
+    }
+
+    const btn = document.getElementById('btn-enviar');
+    const spinner = document.getElementById('spinner');
+    btn.disabled = true;
+    spinner.classList.add('show');
+
+    const payload = {
+      usuario: {
+        nome: document.getElementById('nome').value,
+        telefone: document.getElementById('telefone').value,
+      },
+      local: {
+        cep: document.getElementById('cep').value,
+        bairro: document.getElementById('bairro').value,
+        endereco: document.getElementById('endereco').value,
+        zona: document.getElementById('zona').value,
+      },
+      ocorrencia: {
+        idcategoria: parseInt(document.getElementById('categoria').value),
+        classificacao: document.getElementById('classificacao').value,
+        latitude: parseFloat(document.getElementById('latitude').value) || null,
+        longitude: parseFloat(document.getElementById('longitude').value) || null,
+        descricao: document.getElementById('descricao').value,
+      }
+    };
+
+    const API_URL = 'https://ocorrencias-sp-api.onrender.com';
+
+    try {
+      // 1. Envia os dados da ocorrência
+      const res = await fetch(`${API_URL}/ocorrencias`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        mostrarAlerta('Erro ao enviar: ' + (data.erro || 'Tente novamente.'), 'erro');
+        return;
+      }
+
+      // 2. Se houver fotos, faz upload separado
+      const arquivosFoto = document.getElementById('foto-input').files;
+      if (arquivosFoto.length > 0 && data.idocorrencia) {
+        const formFotos = new FormData();
+        Array.from(arquivosFoto).forEach(f => formFotos.append('fotos', f));
+
+        await fetch(`${API_URL}/fotos/${data.idocorrencia}`, {
+          method: 'POST',
+          body: formFotos
+        });
+      }
+
+      // 3. Mostra tela de sucesso com protocolo retornado pelo banco
+      document.getElementById('tela-form').style.display = 'none';
+      document.getElementById('tela-sucesso').style.display = 'block';
+      document.getElementById('protocolo-num').textContent = data.protocolo;
+      atualizarSteps(3);
+
+    } catch (err) {
+      mostrarAlerta('Não foi possível conectar ao servidor. Verifique se o backend está rodando.', 'erro');
+      console.error(err);
+    } finally {
+      btn.disabled = false;
+      spinner.classList.remove('show');
+    }
+  });
+
+  function gerarProtocolo() {
+    const now = new Date();
+    const ano = now.getFullYear();
+    const rand = Math.floor(Math.random() * 900000) + 100000;
+    return `SP-${ano}-${rand}`;
+  }
+  // STEPS
+  function atualizarSteps(atual) {
+    for (let i = 1; i <= 3; i++) {
+      const s = document.getElementById('step-' + i);
+      s.classList.remove('active', 'done');
+      if (i < atual) s.classList.add('done');
+      else if (i === atual) s.classList.add('active');
+    }
+  }
+
+  document.getElementById('nome').addEventListener('input', () => atualizarSteps(1));
+  document.getElementById('categoria').addEventListener('change', () => atualizarSteps(2));
+  document.getElementById('cep').addEventListener('input', () => atualizarSteps(3));
+
+  // LIMPAR / NOVA OCORRÊNCIA
+  function limparForm() {
+    document.getElementById('form-ocorrencia').reset();
+    document.getElementById('fotos-preview').innerHTML = '';
+    document.querySelectorAll('.field').forEach(f => f.classList.remove('invalido'));
+    document.getElementById('endereco-detectado').classList.remove('show');
+    if (marcador) { mapa.removeLayer(marcador); marcador = null; }
+    mapa.setView(mapaInicial, 13);
+    atualizarSteps(1);
+  }
+
+  function novaOcorrencia() {
+    trocarTela('form');
+    limparForm();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Atalho: da tela de sucesso, abre consulta já preenchida
+  function consultarEsteProtocolo() {
+    const protocolo = document.getElementById('protocolo-num').textContent;
+    trocarTela('consulta');
+    document.getElementById('input-protocolo').value = protocolo;
+    buscarProtocolo();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Força o mapa a recalcular tamanho após render
+  setTimeout(() => mapa.invalidateSize(), 300);
+
+  // ── NAVEGAÇÃO ENTRE TELAS ────────────────────────────────────
+  function trocarTela(qual) {
+    const isForm     = qual === 'form';
+    const isConsulta = qual === 'consulta';
+
+    document.getElementById('tela-form').style.display     = isForm     ? 'block' : 'none';
+    document.getElementById('tela-consulta').style.display = isConsulta ? 'block' : 'none';
+    document.getElementById('tela-sucesso').style.display  = 'none';
+
+    document.getElementById('tab-registrar').classList.toggle('ativo', isForm);
+    document.getElementById('tab-consultar').classList.toggle('ativo', isConsulta);
+
+    if (isConsulta) {
+      setTimeout(() => document.getElementById('input-protocolo').focus(), 100);
+    }
+  }
+
+  // ── BUSCA POR PROTOCOLO ──────────────────────────────────────
+  const LABELS_STATUS = {
+    pendente:     { emoji: '🕐', texto: 'Pendente' },
+    em_andamento: { emoji: '🔧', texto: 'Em andamento' },
+    resolvido:    { emoji: '✅', texto: 'Resolvido' },
+    cancelado:    { emoji: '❌', texto: 'Cancelado' },
+  };
+
+  async function buscarProtocolo() {
+    const protocolo = document.getElementById('input-protocolo').value.trim();
+    if (!protocolo) return;
+
+    const btn = document.getElementById('btn-buscar');
+    btn.disabled = true;
+    btn.classList.add('carregando');
+    document.getElementById('nao-encontrado').style.display   = 'none';
+    document.getElementById('resultado-consulta').style.display = 'none';
+
+    try {
+      const API_URL = 'https://ocorrencias-sp-api.onrender.com';
+      const res = await fetch(`${API_URL}/ocorrencias/${encodeURIComponent(protocolo)}`);
+
+      if (!res.ok) {
+        document.getElementById('nao-encontrado').style.display = 'block';
+        return;
+      }
+
+      const d = await res.json();
+      preencherResultado(d);
+
+      // Busca histórico de status
+      const resStatus = await fetch(`${API_URL}/status/${d.id}`);
+      const statusList = resStatus.ok ? await resStatus.json() : [];
+      preencherTimeline(statusList);
+
+      document.getElementById('resultado-consulta').style.display = 'block';
+      document.getElementById('resultado-consulta').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    } catch (err) {
+      document.getElementById('nao-encontrado').style.display = 'block';
+      document.getElementById('nao-encontrado').textContent = '⚠️ Não foi possível conectar ao servidor.';
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('carregando');
+    }
+  }
+
+  function preencherResultado(d) {
+    // Protocolo
+    document.getElementById('res-protocolo').textContent = d.protocolo;
+
+    // Status atual = último status_novo do histórico
+    const statusAtual = d.status?.length
+      ? d.status[d.status.length - 1].status_novo
+      : 'pendente';
+
+    const label = LABELS_STATUS[statusAtual] || { emoji: '•', texto: statusAtual };
+    const badge = document.getElementById('res-badge');
+    badge.textContent = label.emoji + ' ' + label.texto;
+    badge.className   = 'badge-status ' + statusAtual;
+
+    // Categoria
+    document.getElementById('res-categoria').textContent =
+      d.categoria?.tipo || '—';
+
+    // Data
+    document.getElementById('res-data').textContent = d.data_inclusao
+      ? new Date(d.data_inclusao).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+      : '—';
+
+    // Local
+    document.getElementById('res-endereco').textContent =
+      d.local?.endereco || '—';
+    document.getElementById('res-bairro').textContent =
+      [d.local?.bairro, d.local?.zona].filter(Boolean).join(' · ') || '—';
+
+    // Descrição
+    document.getElementById('res-descricao').textContent =
+      d.observacao || '—';
+  }
+
+  function preencherTimeline(statusList) {
+    const timeline = document.getElementById('res-timeline');
+    timeline.innerHTML = '';
+
+    if (!statusList.length) {
+      timeline.innerHTML = '<p style="font-size:13px;color:var(--cinza)">Nenhum histórico disponível.</p>';
+      return;
+    }
+
+    statusList.forEach((s, i) => {
+      const isUltimo = i === statusList.length - 1;
+      const label = LABELS_STATUS[s.status_novo] || { emoji: '•', texto: s.status_novo };
+      const data  = s.data_alteracao
+        ? new Date(s.data_alteracao).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+        : '';
+
+      const item = document.createElement('div');
+      item.className = `timeline-item ${s.status_novo}${isUltimo ? ' ativo' : ''}`;
+      item.innerHTML = `
+        <div class="timeline-dot"></div>
+        <div class="timeline-status">${label.emoji} ${label.texto}</div>
+        <div class="timeline-data">${data}</div>
+      `;
+      timeline.appendChild(item);
+    });
+  }
+</script>
+
+</body>
+</html>

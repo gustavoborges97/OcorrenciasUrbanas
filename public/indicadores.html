@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Indicadores de Ocorrências — São Paulo</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --verde: #1a7a4a;
+      --verde-claro: #e8f5ee;
+      --verde-medio: #2d9e63;
+      --verde-escuro: #0f5c35;
+      --cinza-escuro: #1c1c1e;
+      --cinza: #6b6b6b;
+      --cinza-claro: #f5f5f5;
+      --borda: #e0e0e0;
+      --branco: #ffffff;
+      --aberto: #e67e22;
+      --solucionado: #1a7a4a;
+      --andamento: #2980b9;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #f0f2f0;
+      color: var(--cinza-escuro);
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--verde);
+      color: white;
+      padding: 0 2rem;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    }
+
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .logo-icon { width: 36px; height: 36px; background: rgba(255,255,255,0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .header-title { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
+    .header-sub { font-size: 11px; opacity: 0.7; margin-top: 1px; }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+
+    .btn-voltar {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 8px;
+      color: white;
+      padding: 6px 14px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s;
+    }
+    .btn-voltar:hover { background: rgba(255,255,255,0.2); }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+    /* LOADING OVERLAY */
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(240,242,240,0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      gap: 16px;
+      backdrop-filter: blur(2px);
+      transition: opacity 0.3s;
+    }
+    .loading-overlay.oculto { opacity: 0; pointer-events: none; }
+    .loading-spinner {
+      width: 44px; height: 44px;
+      border: 3px solid var(--borda);
+      border-top-color: var(--verde);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    .loading-texto { font-size: 14px; color: var(--cinza); font-weight: 500; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ERRO BANNER */
+    .erro-banner {
+      display: none;
+      background: #fdecea;
+      border: 1px solid #f5c6c6;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      font-size: 13px;
+      color: #d32f2f;
+      margin-bottom: 1.5rem;
+      align-items: center;
+      gap: 10px;
+    }
+    .erro-banner.show { display: flex; }
+    .btn-retry {
+      margin-left: auto;
+      background: #d32f2f;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    /* FILTROS */
+    .filtros-bar {
+      background: var(--branco);
+      border: 1px solid var(--borda);
+      border-radius: 14px;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      animation: fadeUp 0.4s ease both;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+
+    .filtros-bar label { font-size: 12px; font-weight: 600; color: var(--cinza); text-transform: uppercase; letter-spacing: 0.5px; }
+    .filtros-bar select {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      padding: 8px 12px;
+      border: 1.5px solid var(--borda);
+      border-radius: 8px;
+      background: var(--branco);
+      color: var(--cinza-escuro);
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .filtros-bar select:focus { border-color: var(--verde-medio); }
+    .filtros-grupo { display: flex; align-items: center; gap: 8px; }
+
+    .btn-filtrar {
+      background: var(--verde);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 18px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-filtrar:hover { background: var(--verde-escuro); }
+    .btn-filtrar:disabled { background: var(--cinza); cursor: not-allowed; }
+
+    .filtro-ativo-tag {
+      background: var(--verde-claro);
+      color: var(--verde);
+      border: 1px solid #b2dfcb;
+      border-radius: 99px;
+      padding: 3px 10px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    /* KPIs */
+    .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+
+    .kpi-card {
+      background: var(--branco);
+      border: 1px solid var(--borda);
+      border-radius: 14px;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      animation: fadeUp 0.4s ease both;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+    .kpi-card:nth-child(1) { animation-delay: 0.05s; }
+    .kpi-card:nth-child(2) { animation-delay: 0.1s; }
+    .kpi-card:nth-child(3) { animation-delay: 0.15s; }
+
+    .kpi-icon { width: 52px; height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+    .kpi-icon.aberto { background: #fef3e2; }
+    .kpi-icon.solucionado { background: var(--verde-claro); }
+    .kpi-icon.andamento { background: #e8f4fd; }
+
+    .kpi-info { flex: 1; min-width: 0; }
+    .kpi-valor { font-size: 32px; font-weight: 700; letter-spacing: -1px; line-height: 1; font-variant-numeric: tabular-nums; }
+    .kpi-valor.aberto { color: var(--aberto); }
+    .kpi-valor.solucionado { color: var(--solucionado); }
+    .kpi-valor.andamento { color: var(--andamento); }
+    .kpi-label { font-size: 13px; color: var(--cinza); margin-top: 4px; }
+    .kpi-pct { font-size: 11px; font-family: 'DM Mono', monospace; margin-top: 4px; font-weight: 500; }
+    .kpi-pct.aberto { color: var(--aberto); }
+    .kpi-pct.solucionado { color: var(--solucionado); }
+    .kpi-pct.andamento { color: var(--andamento); }
+
+    /* CHARTS */
+    .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    .chart-card { background: var(--branco); border: 1px solid var(--borda); border-radius: 14px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.05); animation: fadeUp 0.4s ease 0.2s both; }
+    .chart-card.full { grid-column: 1 / -1; }
+    .chart-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.25rem; }
+    .chart-title { font-size: 14px; font-weight: 600; color: var(--cinza-escuro); }
+    .chart-subtitle { font-size: 12px; color: var(--cinza); margin-top: 2px; }
+    .chart-badge { background: var(--cinza-claro); border-radius: 6px; padding: 3px 8px; font-size: 11px; color: var(--cinza); font-family: 'DM Mono', monospace; white-space: nowrap; }
+    .chart-wrap { position: relative; }
+    .chart-wrap.pizza { max-width: 280px; margin: 0 auto; }
+
+    /* TOP BAIRROS */
+    .top-bairros { display: flex; flex-direction: column; gap: 8px; }
+    .bairro-row { display: flex; align-items: center; gap: 10px; }
+    .bairro-rank { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 600; color: var(--cinza); width: 20px; text-align: right; flex-shrink: 0; }
+    .bairro-nome { font-size: 13px; font-weight: 500; color: var(--cinza-escuro); width: 130px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bairro-bar-wrap { flex: 1; background: var(--cinza-claro); border-radius: 99px; height: 8px; overflow: hidden; }
+    .bairro-bar { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--verde-medio), var(--verde)); transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+    .bairro-count { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; color: var(--verde); width: 30px; text-align: right; flex-shrink: 0; }
+
+    .linha-wrap { height: 260px; }
+    .update-info { text-align: center; font-size: 11px; color: var(--cinza); margin-top: 1rem; font-family: 'DM Mono', monospace; }
+
+    /* Sem dados */
+    .sem-dados {
+      text-align: center;
+      padding: 2rem;
+      color: var(--cinza);
+      font-size: 13px;
+    }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+    @media (max-width: 768px) {
+      .kpi-grid { grid-template-columns: 1fr; }
+      .charts-grid { grid-template-columns: 1fr; }
+      .chart-card.full { grid-column: 1; }
+      .filtros-bar { flex-direction: column; align-items: flex-start; }
+      .btn-filtrar { margin-left: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-texto">Buscando dados do banco...</div>
+</div>
+
+<header>
+  <div class="header-left">
+    <div class="logo-icon">🏙️</div>
+    <div>
+      <div class="header-title">Ocorrências Urbanas</div>
+      <div class="header-sub">Cidade de São Paulo - Portal do Cidadão</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <a href="index.html" class="btn-voltar">← Voltar</a>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ERRO -->
+  <div class="erro-banner" id="erro-banner">
+    <span>⚠️ <span id="erro-texto">Não foi possível carregar os dados.</span></span>
+    <button class="btn-retry" onclick="carregarDados()">Tentar novamente</button>
+  </div>
+
+  <!-- FILTROS -->
+  <div class="filtros-bar">
+    <div class="filtros-grupo">
+      <label for="filtro-mes">Mês</label>
+      <select id="filtro-mes">
+        <option value="0">Todos</option>
+        <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+        <option value="3">Março</option><option value="4">Abril</option>
+        <option value="5">Maio</option><option value="6">Junho</option>
+        <option value="7">Julho</option><option value="8">Agosto</option>
+        <option value="9">Setembro</option><option value="10">Outubro</option>
+        <option value="11">Novembro</option><option value="12">Dezembro</option>
+      </select>
+    </div>
+    <div class="filtros-grupo">
+      <label for="filtro-ano">Ano</label>
+      <select id="filtro-ano">
+        <option value="0">Todos</option>
+        <option value="2024">2024</option>
+        <option value="2025">2025</option>
+        <option value="2026" selected>2026</option>
+      </select>
+    </div>
+    <span class="filtro-ativo-tag" id="filtro-tag">Todos os períodos</span>
+    <button class="btn-filtrar" id="btn-filtrar" onclick="aplicarFiltros()">
+      🔄 Atualizar
+    </button>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-icon aberto">🔴</div>
+      <div class="kpi-info">
+        <div class="kpi-valor aberto" id="kpi-aberto">—</div>
+        <div class="kpi-label">Em Aberto</div>
+        <div class="kpi-pct aberto" id="kpi-aberto-pct"></div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon andamento">🔵</div>
+      <div class="kpi-info">
+        <div class="kpi-valor andamento" id="kpi-andamento">—</div>
+        <div class="kpi-label">Em Andamento</div>
+        <div class="kpi-pct andamento" id="kpi-andamento-pct"></div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon solucionado">✅</div>
+      <div class="kpi-info">
+        <div class="kpi-valor solucionado" id="kpi-solucionado">—</div>
+        <div class="kpi-label">Solucionado</div>
+        <div class="kpi-pct solucionado" id="kpi-solucionado-pct"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRÁFICOS -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div><div class="chart-title">Ocorrências por Zona</div><div class="chart-subtitle">Percentual do total</div></div>
+        <span class="chart-badge" id="badge-pizza">—</span>
+      </div>
+      <div class="chart-wrap pizza"><canvas id="chart-pizza"></canvas></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div><div class="chart-title">Ocorrências por Tipo</div><div class="chart-subtitle">Total acumulado</div></div>
+        <span class="chart-badge" id="badge-barra">—</span>
+      </div>
+      <div class="chart-wrap"><canvas id="chart-barra"></canvas></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div><div class="chart-title">🏆 Top 10 Bairros</div><div class="chart-subtitle">Mais ocorrências registradas</div></div>
+        <span class="chart-badge" id="badge-bairros">—</span>
+      </div>
+      <div class="top-bairros" id="top-bairros"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div><div class="chart-title">Evolução Mensal</div><div class="chart-subtitle">Abertas vs Solucionadas</div></div>
+        <span class="chart-badge" id="badge-linha">—</span>
+      </div>
+      <div class="chart-wrap linha-wrap"><canvas id="chart-linha"></canvas></div>
+    </div>
+  </div>
+
+  <div class="update-info" id="update-info">Carregando...</div>
+</div>
+
+<script>
+  const API_URL = 'https://ocorrencias-sp-api.onrender.com';
+  const MESES_LABEL = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+  // Cache dos dados brutos vindos da API
+  let TODOS_DADOS = [];
+
+  let chartPizza, chartBarra, chartLinha;
+
+  // BUSCA DADOS DA API
+
+  async function carregarDados() {
+    mostrarLoading(true);
+    esconderErro();
+
+    try {
+      const res = await fetch(`${API_URL}/ocorrencias`);
+      if (!res.ok) throw new Error(`Servidor retornou ${res.status}`);
+
+      const raw = await res.json();
+
+      // Normaliza cada ocorrência para o formato usado pelos gráficos
+      TODOS_DADOS = raw.map(o => {
+        const data = new Date(o.data_inclusao);
+
+        // Status atual = último status_novo do array de status
+        let statusAtual = 'pendente';
+        if (Array.isArray(o.status) && o.status.length > 0) {
+          // Pega o mais recente por data_alteracao
+          const sorted = [...o.status].sort((a, b) =>
+            new Date(b.data_alteracao) - new Date(a.data_alteracao)
+          );
+          statusAtual = sorted[0].status_novo || 'pendente';
+        }
+
+        // Mapeia status do banco → labels dos gráficos
+        const statusMap = {
+          pendente:     'aberta',
+          em_andamento: 'em_andamento',
+          resolvido:    'solucionada',
+          cancelado:    'solucionada',
+        };
+
+        return {
+          status:    statusMap[statusAtual] || 'aberta',
+          zona:      o.local?.zona      || 'Não informada',
+          bairro:    o.local?.bairro    || 'Não informado',
+          categoria: o.categoria?.tipo  || 'Outros',
+          mes:       data.getMonth() + 1,
+          ano:       data.getFullYear(),
+        };
+      });
+
+      aplicarFiltros();
+
+    } catch (err) {
+      mostrarErro('Não foi possível conectar à API. Verifique se o servidor está rodando. (' + err.message + ')');
+    } finally {
+      mostrarLoading(false);
+    }
+  }
+
+  // FILTROS
+
+  function filtrarDados() {
+    const mes = parseInt(document.getElementById('filtro-mes').value);
+    const ano = parseInt(document.getElementById('filtro-ano').value);
+    return TODOS_DADOS.filter(d => {
+      const okMes = mes === 0 || d.mes === mes;
+      const okAno = ano === 0 || d.ano === ano;
+      return okMes && okAno;
+    });
+  }
+
+  function aplicarFiltros() {
+    const mes = parseInt(document.getElementById('filtro-mes').value);
+    const ano = parseInt(document.getElementById('filtro-ano').value);
+    const mesNome = mes === 0 ? null : MESES_LABEL[mes - 1];
+    const anoNome = ano === 0 ? null : ano;
+    const tag = [mesNome, anoNome].filter(Boolean).join(' / ') || 'Todos os períodos';
+    document.getElementById('filtro-tag').textContent = tag;
+
+    const dados = filtrarDados();
+    renderTudo(dados);
+  }
+
+  // RENDER
+ 
+  function renderTudo(dados) {
+    renderKPIs(dados);
+    renderPizza(dados);
+    renderBarra(dados);
+    renderTopBairros(dados);
+    renderLinha(dados);
+
+    const agora = new Date();
+    document.getElementById('update-info').textContent =
+      `Última atualização: ${agora.toLocaleDateString('pt-BR')} às ${agora.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})} — ${dados.length} ocorrência(s) no período`;
+  }
+
+  function renderKPIs(dados) {
+    const total = dados.length || 1;
+    const aberto     = dados.filter(d => d.status === 'aberta').length;
+    const andamento  = dados.filter(d => d.status === 'em_andamento').length;
+    const solucionado = dados.filter(d => d.status === 'solucionada').length;
+
+    animarNumero('kpi-aberto', aberto);
+    animarNumero('kpi-andamento', andamento);
+    animarNumero('kpi-solucionado', solucionado);
+
+    document.getElementById('kpi-aberto-pct').textContent     = `${((aberto/total)*100).toFixed(1)}% do total`;
+    document.getElementById('kpi-andamento-pct').textContent  = `${((andamento/total)*100).toFixed(1)}% do total`;
+    document.getElementById('kpi-solucionado-pct').textContent = `${((solucionado/total)*100).toFixed(1)}% do total`;
+  }
+
+  function animarNumero(id, alvo) {
+    const el = document.getElementById(id);
+    const inicio = parseInt(el.textContent) || 0;
+    const steps = 30; const duracao = 600; let step = 0;
+    const diff = alvo - inicio;
+    const timer = setInterval(() => {
+      step++;
+      el.textContent = Math.round(inicio + diff * (step / steps));
+      if (step >= steps) { el.textContent = alvo; clearInterval(timer); }
+    }, duracao / steps);
+  }
+
+  function renderPizza(dados) {
+    // Zonas únicas encontradas nos dados
+    const contagemZonas = {};
+    dados.forEach(d => { contagemZonas[d.zona] = (contagemZonas[d.zona] || 0) + 1; });
+    const zonas  = Object.keys(contagemZonas);
+    const valores = zonas.map(z => contagemZonas[z]);
+    const total  = valores.reduce((a,b) => a+b, 0);
+    document.getElementById('badge-pizza').textContent = `${total} total`;
+
+    // Paleta com 12 cores distintas — nunca repete
+    const PALETA = [
+      '#1a7a4a','#e67e22','#2980b9','#8e44ad','#c0392b',
+      '#16a085','#d4ac0d','#2471a3','#cb4335','#1e8449',
+      '#7d3c98','#ca6f1e'
+    ];
+    const coresPizza = zonas.map((_, i) => PALETA[i % PALETA.length]);
+
+    if (chartPizza) chartPizza.destroy();
+    chartPizza = new Chart(document.getElementById('chart-pizza'), {
+      type: 'doughnut',
+      data: {
+        labels: zonas,
+        datasets: [{ data: valores, backgroundColor: coresPizza, borderWidth: 2, borderColor: '#fff', hoverOffset: 8 }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { family: 'DM Sans', size: 12 }, padding: 12 } },
+          tooltip: { callbacks: { label: ctx => {
+            const pct = total ? ((ctx.parsed / total) * 100).toFixed(1) : 0;
+            return ` ${ctx.label}: ${ctx.parsed} (${pct}%)`;
+          }}}
+        },
+        cutout: '60%',
+        animation: { animateScale: true, duration: 800 }
+      }
+    });
+  }
+
+  function renderBarra(dados) {
+    const contagem = {};
+    dados.forEach(d => { contagem[d.categoria] = (contagem[d.categoria] || 0) + 1; });
+    const labels  = Object.keys(contagem).sort((a,b) => contagem[b] - contagem[a]);
+    const valores = labels.map(c => contagem[c]);
+    document.getElementById('badge-barra').textContent = `${dados.length} ocorrências`;
+
+    // Mesma paleta, versão com opacidade para as barras
+    const PALETA_BARRA = [
+      'rgba(26,122,74,0.85)','rgba(230,126,34,0.85)','rgba(41,128,185,0.85)',
+      'rgba(142,68,173,0.85)','rgba(192,57,43,0.85)','rgba(22,160,133,0.85)',
+      'rgba(212,172,13,0.85)','rgba(36,113,163,0.85)','rgba(203,67,53,0.85)',
+      'rgba(30,132,73,0.85)','rgba(125,60,152,0.85)','rgba(202,111,30,0.85)'
+    ];
+    const coresBarra = labels.map((_, i) => PALETA_BARRA[i % PALETA_BARRA.length]);
+
+    if (chartBarra) chartBarra.destroy();
+    chartBarra = new Chart(document.getElementById('chart-barra'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{ label: 'Ocorrências', data: valores, backgroundColor: coresBarra, borderRadius: 6, borderSkipped: false }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y} ocorrências` } }
+        },
+        scales: {
+          y: { beginAtZero: true, grid: { color: '#f0f0f0' }, ticks: { font: { family: 'DM Mono', size: 11 } } },
+          x: { grid: { display: false }, ticks: { font: { family: 'DM Sans', size: 11 }, maxRotation: 20 } }
+        },
+        animation: { duration: 700 }
+      }
+    });
+  }
+
+  function renderTopBairros(dados) {
+    const contagem = {};
+    dados.forEach(d => { contagem[d.bairro] = (contagem[d.bairro] || 0) + 1; });
+    const sorted = Object.entries(contagem).sort((a,b) => b[1]-a[1]).slice(0,10);
+    const max = sorted[0]?.[1] || 1;
+    document.getElementById('badge-bairros').textContent = `${Object.keys(contagem).length} bairros`;
+
+    const container = document.getElementById('top-bairros');
+    container.innerHTML = '';
+
+    if (sorted.length === 0) {
+      container.innerHTML = '<div class="sem-dados">Nenhum dado no período</div>';
+      return;
+    }
+
+    sorted.forEach(([bairro, count], i) => {
+      const row = document.createElement('div');
+      row.className = 'bairro-row';
+      row.innerHTML = `
+        <span class="bairro-rank">${i+1}</span>
+        <span class="bairro-nome" title="${bairro}">${bairro}</span>
+        <div class="bairro-bar-wrap">
+          <div class="bairro-bar" style="width:0%" data-pct="${(count/max*100).toFixed(1)}"></div>
+        </div>
+        <span class="bairro-count">${count}</span>
+      `;
+      container.appendChild(row);
+    });
+
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.bairro-bar').forEach(bar => {
+        bar.style.width = bar.dataset.pct + '%';
+      });
+    });
+  }
+
+  function renderLinha(dados) {
+    const abertas      = Array(12).fill(0);
+    const solucionadas = Array(12).fill(0);
+    dados.forEach(d => {
+      const idx = d.mes - 1;
+      if (d.status === 'aberta')      abertas[idx]++;
+      if (d.status === 'solucionada') solucionadas[idx]++;
+    });
+    document.getElementById('badge-linha').textContent = `${dados.length} registros`;
+
+    if (chartLinha) chartLinha.destroy();
+    chartLinha = new Chart(document.getElementById('chart-linha'), {
+      type: 'line',
+      data: {
+        labels: MESES_LABEL,
+        datasets: [
+          { label: 'Em Aberto', data: abertas, borderColor: '#e67e22', backgroundColor: 'rgba(230,126,34,0.08)', tension: 0.4, fill: true, pointBackgroundColor: '#e67e22', pointRadius: 4, pointHoverRadius: 6, borderWidth: 2.5 },
+          { label: 'Solucionadas', data: solucionadas, borderColor: '#1a7a4a', backgroundColor: 'rgba(26,122,74,0.08)', tension: 0.4, fill: true, pointBackgroundColor: '#1a7a4a', pointRadius: 4, pointHoverRadius: 6, borderWidth: 2.5 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'top', labels: { font: { family: 'DM Sans', size: 12 }, usePointStyle: true, padding: 16 } },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}` } }
+        },
+        scales: {
+          y: { beginAtZero: true, grid: { color: '#f0f0f0' }, ticks: { font: { family: 'DM Mono', size: 11 } } },
+          x: { grid: { display: false }, ticks: { font: { family: 'DM Sans', size: 11 } } }
+        },
+        animation: { duration: 800 }
+      }
+    });
+  }
+
+  // UTILITÁRIOS
+
+  function mostrarLoading(show) {
+    document.getElementById('loading-overlay').classList.toggle('oculto', !show);
+  }
+
+  function mostrarErro(msg) {
+    const banner = document.getElementById('erro-banner');
+    document.getElementById('erro-texto').textContent = msg;
+    banner.classList.add('show');
+  }
+
+  function esconderErro() {
+    document.getElementById('erro-banner').classList.remove('show');
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    const agora = new Date();
+    document.getElementById('filtro-ano').value = agora.getFullYear();
+    document.getElementById('filtro-mes').value = 0;
+    carregarDados();
+  });
+</script>
+
+</body>
+</html>
