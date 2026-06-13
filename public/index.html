@@ -736,8 +736,7 @@
       idOcorrenciaAtual = d.id;
       preencherResultado(d);
 
-      const resStatus = await fetch(`${API_URL}/status/${d.id}`);
-      const statusList = resStatus.ok ? await resStatus.json() : [];
+      const statusList = d.status || [];
       preencherTimeline(statusList);
 
       // Pré-seleciona o status atual na seção de alteração
@@ -827,8 +826,8 @@
 
     try {
       const API_URL = 'https://ocorrencias-sp-api.onrender.com';
-      const res = await fetch(`${API_URL}/status/${idOcorrenciaAtual}`, {
-        method: 'POST',
+      const res = await fetch(`${API_URL}/ocorrencias/${idOcorrenciaAtual}/status`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
