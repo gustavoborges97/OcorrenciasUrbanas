@@ -6,6 +6,8 @@
   <title>Indicadores de Ocorrências — São Paulo</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -313,9 +315,15 @@
       </select>
     </div>
     <span class="filtro-ativo-tag" id="filtro-tag">Todos os períodos</span>
-    <button class="btn-filtrar" id="btn-filtrar" onclick="aplicarFiltros()">
-      🔄 Atualizar
-    </button>
+   <div style="display:flex; gap:10px; margin-left:auto;">
+      <button class="btn-filtrar" id="btn-filtrar" onclick="aplicarFiltros()">
+       🔄 Atualizar
+      </button>
+
+      <button class="btn-filtrar" onclick="gerarPDF()">
+      📄 Gerar PDF
+      </button>
+</div>
   </div>
 
   <!-- KPIs -->
@@ -682,6 +690,125 @@
     document.getElementById('filtro-mes').value = 0;
     carregarDados();
   });
+
+  async function gerarPDF() {
+  try {
+
+    const res = await fetch(`${API_URL}/ocorrencias`);
+
+    if (!res.ok) {
+      throw new Error("Erro ao buscar ocorrências");
+    }
+
+    const ocorrencias = await res.json();
+
+    const mesSelecionado =
+      parseInt(document.getElementById('filtro-mes').value);
+
+    const anoSelecionado =
+      parseInt(document.getElementById('filtro-ano').value);
+
+    const dadosFiltrados = ocorrencias.filter(o => {
+
+      const data = new Date(o.data_inclusao);
+
+      const mes = data.getMonth() + 1;
+      const ano = data.getFullYear();
+
+      let statusAtual = "pendente";
+
+      if (Array.isArray(o.status) && o.status.length > 0) {
+        const ultimo = [...o.status].sort(
+          (a, b) =>
+            new Date(b.data_alteracao) -
+            new Date(a.data_alteracao)
+        )[0];
+
+        statusAtual = ultimo.status_novo;
+      }
+
+      const aberto = statusAtual === "pendente";
+
+      const filtroMes =
+        mesSelecionado === 0 ||
+        mes === mesSelecionado;
+
+      const filtroAno =
+        anoSelecionado === 0 ||
+        ano === anoSelecionado;
+
+      return aberto && filtroMes && filtroAno;
+    });
+
+    const { jsPDF } = window.jspdf;
+
+    const doc = new jsPDF('landscape');
+
+    doc.setFontSize(16);
+
+    doc.text(
+      "Relatório de Ocorrências em Aberto",
+      14,
+      15
+    );
+
+    doc.setFontSize(10);
+
+    doc.text(
+      `Gerado em: ${new Date().toLocaleString('pt-BR')}`,
+      14,
+      22
+    );
+
+    const linhas = dadosFiltrados.map(o => [
+
+      o.protocolo || "-",
+
+      new Date(o.data_inclusao)
+        .toLocaleDateString('pt-BR'),
+
+      o.local?.endereco || "-",
+
+      o.local?.zona || "-",
+
+      o.local?.bairro || "-",
+
+      o.categoria?.tipo || "-"
+    ]);
+
+    doc.autoTable({
+      startY: 30,
+      head: [[
+        "Protocolo",
+        "Data da Ocorrência",
+        "Endereço",
+        "Zona",
+        "Bairro",
+        "Tipo de Ocorrência"
+      ]],
+      body: linhas,
+      styles: {
+        fontSize: 8
+      },
+      headStyles: {
+        fillColor: [26, 122, 74]
+      }
+    });
+
+    doc.save(
+      `Ocorrencias_Abertas_${Date.now()}.pdf`
+    );
+
+  } catch (erro) {
+
+    console.error(erro);
+
+    alert(
+      "Erro ao gerar PDF: " +
+      erro.message
+    );
+  }
+}
 </script>
 
 </body>
